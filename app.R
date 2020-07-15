@@ -3,8 +3,8 @@ pacman::p_load(tidyverse, readxl, qdap, shiny, scales, data.table,
                waffle, ggExtra)
 
 #load dataset from Dropbox----
-main <- read.csv("https://www.dropbox.com/s/o4gjbhn6dtg928k/main_v2.csv?raw=1")
-
+#main <- read.csv("https://www.dropbox.com/s/o4gjbhn6dtg928k/main_v2.csv?raw=1")
+main <- read.csv("Cacaococonuttest.csv")
 #Tidying dataset----
 #Visuals Setting
 theme_set(theme_bw())
@@ -13,7 +13,9 @@ tol9qualitative=c("#332288", "#88CCEE", "#44AA99", "#117733", "#999933",
 
 #tidy datasets
 #collect Var Names that fulfill data type conditions
-ctgr <- main %>% select_if(is.factor) %>% 
+
+ctgr <- main  %>% modify_if(is.character, as.factor) %>%
+  select_if(is.factor) %>% 
   names()
 
 cont <- main %>% select_if(is.numeric) %>% 
