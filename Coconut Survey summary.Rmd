@@ -1,0 +1,693 @@
+---
+title: "Coconut survey Summary"
+author: "Phuong"
+date: "7/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(readxl,stringr,naniar,
+               plyr,RColorBrewer,ggpubr,
+               ggExtra,knitr, kableExtra, tidyverse)
+```
+
+```{r include=FALSE}
+###the short name version
+mainrn <- read.csv("surveydataclean.csv") 
+mainrn$X_submission_time <-as.Date(mainrn$X_submission_time)
+
+#####mutation and adding variable-----
+mainrn <- mutate(mainrn, enum_hhid = paste0(V1102Interviewer.Name,"/",V1108hhID))
+
+mainrn <- mainrn %>% mutate(V2220coco_output_kg= 
+                          ifelse(V2221coco.output.unit=="Kg",V2220coco.output,
+                                 ifelse(V2221coco.output.unit=="Tons",V2220coco.output*1000,NA)))
+
+mainrn <- mainrn %>% mutate(V2220coco_output_nut=
+                          ifelse(V2221coco.output.unit=="Nuts",V2220coco.output,NA))
+
+mainrn <- mainrn %>% mutate(V2220coco_output_others=
+                          ifelse(V2221coco.output.unit=="Other, specify",V2220coco.output,NA))    
+
+mainrn <- mainrn %>% mutate(V2227cal_coco_kg_per_tree= V2220coco_output_kg/(V2225coco.productive.percent*(V2226no.coco.tree/100)))
+mainrn <- mainrn %>% mutate(V2227cal_coco_nut_per_tree= V2220coco_output_nut/(V2225coco.productive.percent*(V2226no.coco.tree/100)))
+mainrn <- mainrn %>% mutate(V2227cal_coco_others_per_tree= V2220coco_output_others/(V2225coco.productive.percent*(V2226no.coco.tree/100)))
+mainrn$V2227cal_coco_nut_per_tree
+
+###HH Satified with cacao has reverse questions compared to other 2 groups -> recode them and combine with other 2 groups
+table(mainrn$V2404struggle.satisfied.w.cacao)
+table(mainrn$V2209coco.cacao.crop.system) #Intercrop coconut with non-cacao crops only + Monocrop coconut, no cacao = no cacao
+mainrn <- mainrn %>% mutate(cacao_Satisfy.Strg.NoCC=
+                    ifelse(V2404struggle.satisfied.w.cacao=="Satisfied","Satisfied",
+                           ifelse(V2404struggle.satisfied.w.cacao=="Struggling","Struggling","No Cacao")))
+table(mainrn$cacao_Satisfy.Strg.NoCC)
+
+CC.satify.reverse.ans <- mainrn %>% select(X_id,starts_with("Reverse.")) 
+names(CC.satify.reverse.ans) <- gsub("Reverse\\.","",names(CC.satify.reverse.ans))
+table(CC.satify.reverse.ans$Farmops.not.enough.land.intercr)
+table(CC.satify.reverse.ans$Farmops.difficulty.machinery)
+
+idata <- CC.satify.reverse.ans
+idata <- as.data.frame(idata)
+old_dat <- idata # just for check data
+nsample <- nrow(idata) 
+rev_ques <- seq(2,ncol(idata))
+#rev_ques <- c(1,3) # select columns (i.e. questions for reversing)
+
+for (iques in c(rev_ques)){
+  for (isample in seq(nsample)){
+    flag <- 0
+    if (is.na(idata[isample,iques])==FALSE){
+      #print(idata[isample,iques])
+      if (flag == 0){if (idata[isample,iques]=="Agree"){idata[isample,iques]<-"Disagree";flag <-1}}
+      if (flag == 0){if (idata[isample,iques]=="Disagree"){idata[isample,iques]<-"Agree";flag <-1}}
+      if (flag == 0){if (idata[isample,iques]=="Strongly agree"){idata[isample,iques]<-"Strongly disagree";flag <-1}}
+      if (flag == 0){if (idata[isample,iques]=="Strongly disagree"){idata[isample,iques]<-"Strongly agree";flag <-1}}
+    } 
+  }
+}
+CC.satify.reverse.ans <- idata
+#row <- 1
+#col <- 2
+#for (row in seq(1,nrow(CC.satify.reverse.ans))){
+#for (col in seq(2,ncol(CC.satify.reverse.ans))){
+#  if (CC.satify.reverse.ans[row,col]=="Strongly agree"){
+#    CC.satify.reverse.ans[row,col] <- "Strongly dis"
+#  } 
+#  if(CC.satify.reverse.ans[row,col]=="Agree"){
+#    CC.satify.reverse.ans[row,col] <- "Dis"
+#  }
+#  if(CC.satify.reverse.ans[row,col]=="Disagree"){
+#  CC.satify.reverse.ans[row,col] <- "Agree"
+#  }
+#  if(CC.satify.reverse.ans[row,col]=="Strongly disagree"){
+#    CC.satify.reverse.ans[row,col] <- "Strongly agree"
+#  }
+#  else{
+#    CC.satify.reverse.ans[row,col] <- CC.satify.reverse.ans[row,col]
+#  }
+#}}
+#CC.satify.reverse.ans[] <-
+#  lapply(CC.satify.reverse.ans, function(x) gsub("Dis", "Disagree", x)) 
+#CC.satify.reverse.ans[] <-
+#  lapply(CC.satify.reverse.ans, function(x) gsub("Strongly dis", "Strongly disagree", x)) 
+
+#test
+#CC.satify.reverse.ans <- data.frame(
+#  ID= c("a","b","c"),
+#  V1 = c("Strongly agree", "Strongly disagree","No answer"),
+#  V2 = c("abc", "Agree","Disagree"))
+#CC.satify.reverse.ans
+
+table(CC.satify.reverse.ans$Farmops.not.enough.land.intercr)
+table(CC.satify.reverse.ans$Farmops.difficulty.machinery)
+
+CC.strg <- mainrn %>% select(X_id,starts_with("Strg.")) 
+names(CC.strg) <- gsub("Strg\\.","",names(CC.strg)) 
+CC.none <- mainrn %>% select(X_id,starts_with("NCC.")) 
+names(CC.none) <- gsub("NCC\\.","",names(CC.none))
+
+cacaogroup <- plyr::rbind.fill(CC.strg,CC.satify.reverse.ans,CC.none)
+cacaogroup <- cacaogroup %>% replace_with_na_all(condition = ~.x == "") 
+cacaogroup <- cacaogroup %>% na.omit()
+cacaogroup$X_id <- as.numeric(cacaogroup$X_id)
+#names(cacaogroup) <- gsub("^","Cb.",names(cacaogroup))
+mainrn <- mainrn %>% left_join(cacaogroup)
+
+#create manual color pallete for many category
+nb.cols <- 30
+mycolors <- colorRampPalette(brewer.pal(8, "Set2"))(nb.cols)
+
+```
+
+```{r include=FALSE}
+#### the long name version
+
+main <- read.csv("surveydataclean.csv") 
+main <- main %>% select(-ShockRecoverOrNot)
+main$X_submission_time <-as.Date(main$X_submission_time)
+#main <- main %>% filter(X_submission_time == Sys.Date()-1) ## check yesterday data
+#main <- main %>% filter(X_submission_time == "2020-08-10") ## or input the date you want to check manually
+#main <- main[122:151,] ## or choose the row by yourself
+```
+
+```{r include=FALSE}
+colnames(main) <- make.names(colnames(main))
+colname <- read.csv("name2.csv")
+col <- colname$concart_name
+colnames(main) <- col
+
+#main <- mutate(main, enum_hhid = paste0(V1102Interviewer.s.Name,"/",V1106Name.of.Barangay,"/",V1108ID.of.Household..HHID.))
+
+main <- mutate(main, enum_hhid = paste0(V1102Interviewer.s.Name,"/",V1108ID.of.Household..HHID.))
+
+main <- main %>% mutate(V2220coco_output_kg= 
+                          ifelse(V2221Unit.of.output=="Kg",V2220What.was.the.total...coconut_label..output.in.2019.,
+                                 ifelse(V2221Unit.of.output=="Tons",V2220What.was.the.total...coconut_label..output.in.2019.*1000,NA)))
+
+main <- main %>% mutate(V2220coco_output_nut=
+                          ifelse(V2221Unit.of.output=="Nuts",V2220What.was.the.total...coconut_label..output.in.2019.,NA))
+                          
+main <- main %>% mutate(V2220coco_output_others=
+                          ifelse(V2221Unit.of.output=="Other, specify",V2220What.was.the.total...coconut_label..output.in.2019.,NA))    
+
+main <- main %>% mutate(V2227cal_coco_kg_per_tree= V2220coco_output_kg/(V2225Approximately.what.percentage.of.total.coconut.trees.in.your.farm.are.productive.....*(V2226V2226/100)))
+main <- main %>% mutate(V2227cal_coco_nut_per_tree= V2220coco_output_nut/(V2225Approximately.what.percentage.of.total.coconut.trees.in.your.farm.are.productive.....*(V2226V2226/100)))
+main <- main %>% mutate(V2227cal_coco_others_per_tree= V2220coco_output_others/(V2225Approximately.what.percentage.of.total.coconut.trees.in.your.farm.are.productive.....*(V2226V2226/100)))
+
+cols <- grep(pattern="V2217|V2223|V2224|V2227|V2247|V2248|V2250|V3101|V3301|V3302|V3303|V3304|V3305|V3306|V3307|V3308|V3310|V3311|V3312|V3313|V3314|V3401|V3402|V4011|V2220coco", names(main), value=TRUE)
+cols <- cols[!grepl("check",cols)]
+```
+
+
+## Categorical variables
+### Overview & Income source & intercrop system
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=17,fig.height=7}
+full <- mainrn %>% ggplot() + geom_point(aes(x=V3101income.2019.,
+                               y=V3316minutes.largest.coconut.plot,
+                                       color=V2103ethnicity))+
+  labs(title="(Full)")
+zoom <- mainrn %>% ggplot() + geom_point(aes(x=V3101income.2019.,
+                              y=V3316minutes.largest.coconut.plot,
+                                     color=V2103ethnicity))+
+  ylim(0,100)+xlim(0,600000) + labs(title="(Zoom)")
+ggpubr::ggarrange(full,zoom)
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=5}
+mainrn %>% ggplot() + geom_boxplot(aes(x=V3117income.adequate.consumption,
+                                       y=V3101income.2019.,
+                                       fill=V3117income.adequate.consumption))+
+  theme(axis.text.x = element_blank())
+#+ geom_text(stat="count",aes(x=V3117income.adequate.consumption,label=..count..))
+
+mainrn %>% ggplot(aes(V3102largest.source.income.2019.,
+                      fill=V3102largest.source.income.2019.)) +
+  geom_bar() + theme(axis.text.x = element_blank())
+
+mainrn %>% ggplot(aes(V3103income.fr.on.farm.or.off.farm,
+                      fill=V3103income.fr.on.farm.or.off.farm)) +
+  geom_bar() + theme(axis.text.x = element_blank())
+mainrn %>% ggplot(aes(V2209coco.cacao.crop.system,
+                      fill=V2209coco.cacao.crop.system)) +
+  geom_bar() + theme(axis.text.x = element_blank())
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=7,fig.height=4}
+characteristic <- mainrn %>% select(V2103ethnicity,
+                                    V2104first.languange,
+                                    V2105religion,V2106highest.education,
+                                    V2107gender) %>% names()
+for (i in c(characteristic))  {
+eval(parse(text=paste0("p <- mainrn %>%ggplot() + geom_boxplot(aes(x=",i,",
+                                       y=V3101income.2019.,
+                                       fill=V2107gender))+ylim(0,500000)")))
+print(p)
+} 
+```
+
+### Cropping system overview
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+mainrn %>% ggplot() +
+  geom_point(aes(V2239cacao.age,V3101income.2019.)) + ylim(0,600000)
+```
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+mainrn <- mainrn %>% mutate(V2215coco.age=
+                              fct_relevel(V2215coco.age,"6 to 15 years",
+                                          "16 to 25 years",
+                                          "26 to 35 years",
+                                          "36 to 45 years",
+                                          "46 to 55 years",
+                                          "56 to 65 years",
+                                          "66 to 75 years",
+                                          "More than 75 years"),
+                            V2212coco.experience.year=
+                              fct_relevel(V2212coco.experience.year,
+                                          "Less than 5 years",
+                                          "6 to 15 years",
+                                          "16 to 25 years",
+                                          "26 to 35 years",
+                                          "More than 35 years"),
+                            V2236cacao.experience.year=
+                              fct_relevel(V2236cacao.experience.year,
+                                          "Less than 5 years",
+                                          "6 to 15 years",
+                                          "16 to 25 years",
+                                          "26 to 35 years",
+                                          "More than 35 years")
+                            )
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=9,fig.height=5}
+
+
+overview <- mainrn %>% select(V2215coco.age,
+                  V2212coco.experience.year,
+                  V2236cacao.experience.year,
+                  V2213first.begin.coco,
+                  V2337first.begin.cacao,
+                  V2214coco.importance.to.income,
+                  V2238cacao.importance.to.income.,
+                  V2215coco.variety,
+                  V2239cacao.variety,
+                  V2219main.coco.product,
+                  V2243main.cacao.product,
+                  V2211other.crop.most.contribute.income,
+                  V2253.V2211crop.importance.to.income) %>% names()
+
+
+for (i in c(overview)){
+  print(i)
+  eval(parse(text=paste0("b <- mainrn %>% select(",i,",V3101income.2019.) %>% 
+                                       replace_with_na_all(condition = ~.x == '') %>% na.omit() %>% 
+                                       ggplot() + geom_bar(aes(x=",i,",
+                                       fill=",i,"))+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = 'none')")))
+  eval(parse(text=paste0("c <- mainrn %>% select(",i,",V3101income.2019.) %>% 
+                                       replace_with_na_all(condition = ~.x == '') %>% na.omit() %>% 
+                                       ggplot() + geom_boxplot(aes(x=",i,",
+                                       y=V3101income.2019.,
+                                       fill=",i,"))+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = 'none')")))
+  d <- ggpubr::ggarrange(b,c)
+  print(d)
+}
+```
+
+### V2210other.crop.except.coco.cacao
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+nmax <- max(stringr::str_count(mainrn$V2210other.crop.except.coco.cacao, "[:upper:]")) 
+test <- mainrn %>% select(V2210other.crop.except.coco.cacao) %>% 
+  separate(V2210other.crop.except.coco.cacao,
+           into = paste("V2210other.crop.except.coco.cacao", seq(nmax), sep = "_"),
+           sep = " (?<=.)(?=[[:upper:]])",
+           fill = "right")
+test %>% replace_with_na_all(condition = ~.x == "") %>%
+  pivot_longer(everything(),values_drop_na = T) %>%
+  ggplot() +
+  geom_bar(aes(x=value,fill=value)) +
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  labs(x="",title="V2210other.crop.except.coco.cacao")
+```
+
+### Cacao planting
+Below graph show 
+
+* the share of no cacao vs. satisfied vs. struggle with cacao production, and 
+
+* the reason why they are not planting / struggling /satisfied with cacao
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+print("This graph show the share of planting (struggling /satisfied) versus not planting")
+
+ggplot(mainrn) + geom_bar(aes(x=cacao_Satisfy.Strg.NoCC,fill=cacao_Satisfy.Strg.NoCC)) +
+  labs(title="The share of not planting / struggling /satisfied with cacao")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=12,fig.height=10}
+print("This graph shows level of agreement for the reason for not planting or struggling with cacao")
+mainrn %>% 
+  filter(cacao_Satisfy.Strg.NoCC %in% c("No Cacao","Struggling")) %>% 
+  select(Farmops.not.enough.land.intercr:Safety.this.area.unsafe.transit.aggression.assault) %>% 
+  pivot_longer(everything()) %>% 
+  mutate(value=fct_relevel(value,"Strongly agree",
+                           "Agree","Neutral","Disagree",
+                           "Strongly disagree")) %>% 
+  ggplot() +
+  geom_bar(aes(x=value,fill=value)) +
+  facet_wrap(~name,ncol=4)+
+  labs(title="Reason for not planting / struggling with cacao",
+       x="",
+       fill="Level of agreement")+
+  theme(legend.position = "bottom",
+        axis.text.x = element_blank())
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=6}
+print("This graph shows reason for not planting or struggling with cacao")
+mainrn %>% 
+  filter(cacao_Satisfy.Strg.NoCC %in% c("No Cacao","Struggling")) %>% 
+  select(Farmops.not.enough.land.intercr:Safety.this.area.unsafe.transit.aggression.assault) %>% 
+  pivot_longer(everything()) %>% 
+  filter(value=="Strongly agree" | value=="Agree") %>% 
+  ggplot() +
+  geom_bar(aes(x=name,fill=name)) +
+  labs(title="Reason for not planting / struggling with cacao",
+       subtitle="No of agree + strongly agree",
+       x="",
+       fill="Reason")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  scale_fill_manual(values = mycolors)
+print("This graph shows reason for satisfied with cacao")
+mainrn %>% 
+  filter(cacao_Satisfy.Strg.NoCC %in% c("Satisfied")) %>% 
+  select(Farmops.not.enough.land.intercr:Safety.this.area.unsafe.transit.aggression.assault) %>% 
+  pivot_longer(everything()) %>% 
+  filter(value=="Strongly agree" | value=="Agree") %>% 
+  ggplot() +
+  geom_bar(aes(x=name,fill=name)) +
+  labs(title="Reason for Satisfied with cacao",
+       subtitle="No of agree + strongly agree WITH DRAWBACKS OF CACAO INTERCROPPING",
+       x="",
+       fill="Reason")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  scale_fill_manual(values = mycolors)
+
+
+
+print("This graph shows reason for all 3 category not planting, struggling, satisfied")
+mainrn %>% 
+  select(Farmops.not.enough.land.intercr:Safety.this.area.unsafe.transit.aggression.assault) %>% 
+  pivot_longer(everything()) %>% 
+  filter(value=="Strongly agree" | value=="Agree") %>% 
+  ggplot() +
+  geom_bar(aes(x=name,fill=name)) +
+  labs(title="Reason for not planting / struggling /satisfied with cacao",
+       subtitle="No of agree + strongly agree",
+       x="",
+       fill="Reason")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  scale_fill_manual(values = mycolors)
+```
+
+```{r eval=FALSE, include=FALSE}
+satify <- main %>% select(195:228,V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.with.your.cacao.production.)
+satify <- satify[!grepl("1$",names(satify))]
+satify %>% filter(V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.with.your.cacao.production.=="Satisfied") %>% 
+  select(-V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.with.your.cacao.production.) %>% 
+  pivot_longer(everything()) %>% 
+  filter(value=="Strongly agree" | value=="Agree") %>% 
+  ggplot() +
+  geom_bar(aes(x=name,fill=name)) +
+  labs(title="Reason for Satisfied with cacao",
+       subtitle="No of agree + strongly agree",
+       x="",
+       fill="Reason")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  scale_fill_manual(values = mycolors)
+
+```
+
+### Trust in service provider
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=8}
+trust <- mainrn %>% select(contains("trust.")) %>% names()
+trustpl <- mainrn %>% select(all_of(trust)) %>% 
+  pivot_longer(everything()) 
+#table(trustpl$value)
+trustpl$value <- gsub(" / | /|/ ","/",trustpl$value)
+trustpl$value <-toupper(trustpl$value)
+trustpl <- trustpl %>% replace_with_na_all(condition = ~.x == "") 
+trustpl %>% na.omit() %>% 
+  ggplot() + geom_bar(aes(x=value,fill=value)) +
+  facet_wrap(~name,ncol=3)+
+  labs(title="Perception of cacao/coco",
+       x="",
+       fill="Level of trust")+
+  theme(legend.position = "bottom",
+        axis.text.x = element_blank())
+
+```
+
+### Perception of cacao/coco
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=8}
+percep <- mainrn %>% select(contains("Percep.")) %>% names()
+mainrn %>% select(all_of(percep)) %>% 
+  pivot_longer(everything()) %>%
+  mutate(value=fct_relevel(value,"Strongly Agree",
+                           "Agree","No answer","Disagree",
+                           "Strongly Disagree"))  %>% 
+  ggplot() + geom_bar(aes(x=value,fill=value)) +
+  facet_wrap(~name,ncol=2)+
+  labs(title="Perception of cacao/coco",
+       x="",
+       fill="Level of agreement")+
+  theme(legend.position = "bottom",
+        axis.text.x = element_blank())
+
+```
+
+### Distance to market/workplace/input/etc
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=9,fig.height=6}
+a <- mainrn %>% mutate(Plant_cacao_or_not = 
+                    ifelse(cacao_Satisfy.Strg.NoCC=="No Cacao", "No", "Yes")) %>% select(Plant_cacao_or_not,contains("minutes")) %>% 
+  pivot_longer(-Plant_cacao_or_not)
+a$name <- gsub("V\\d{4}minutes\\.","",a$name)
+a %>% 
+  ggplot()+geom_boxplot(aes(x=name,y=value,fill=Plant_cacao_or_not))+
+  theme(axis.text.x = element_text(angle = 35,hjust=1))+
+  labs(x="")
+
+a %>% 
+  ggplot()+geom_boxplot(aes(x=name,y=value,fill=Plant_cacao_or_not))+
+  theme(axis.text.x = element_text(angle = 35,hjust=1))+
+  ylim(0,75)+
+  labs(x="",title="(Zoom)")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=10}
+transportmethod <- mainrn %>% select(contains("method.")) %>% names()
+mainrn %>% select(all_of(transportmethod)) %>% 
+  pivot_longer(everything()) %>% 
+  ggplot() + geom_bar(aes(x=value,fill=value)) +
+  facet_wrap(~name,ncol=3)+
+  labs(title="Transportation method to workplace/market/input/etc",
+       x="",
+       fill="Method")+
+  theme(legend.position = "bottom",
+        axis.text.x = element_blank())
+```
+
+### Cope with shock
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=9,fig.height=6}
+nmax <- max(stringr::str_count(mainrn$V4009.cope.shock, "[:upper:]")) 
+test <- mainrn %>% select(V4009.cope.shock) %>% 
+  separate(V4009.cope.shock,
+           into = paste("V4009.cope.shock", seq(nmax), sep = "_"),
+           sep = " (?<=.)(?=[[:upper:]])",
+           fill = "right")
+test %>% replace_with_na_all(condition = ~.x == "") %>%
+  pivot_longer(everything(),values_drop_na = T) %>%
+  ggplot() +
+  geom_bar(aes(x=value,fill=value)) +
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  labs(x="",title="How to cope with shock")
+```
+
+### V3309.Outer.Walls.Construct.Materials
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+nmax <- max(stringr::str_count(mainrn$V3309.Outer.Walls.Construct.Materials, "[:upper:]")) 
+test <- mainrn %>% select(V3309.Outer.Walls.Construct.Materials) %>% 
+  separate(V3309.Outer.Walls.Construct.Materials,
+           into = paste("V3309.Outer.Walls.Construct.Materials", seq(nmax), sep = "_"),
+           sep = " (?<=.)(?=[[:upper:]])",
+           fill = "right")
+test %>% replace_with_na_all(condition = ~.x == "") %>%
+  pivot_longer(everything(),values_drop_na = T) %>%
+  ggplot() +
+  geom_bar(aes(x=value,fill=value)) +
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  labs(x="",title="V3309.Outer.Walls.Construct.Materials")
+```
+
+
+### Investment - Proactiveness - Innovativeness
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=15,fig.height=8}
+IPI <- grep("Invest\\.|Proact\\.|Innovative\\.",names(mainrn),value=T)
+mainrn %>% select(all_of(IPI)) %>% 
+  pivot_longer(everything()) %>%  replace_with_na_all(condition = ~.x == "")%>%
+  na.omit() %>% 
+  mutate(value=fct_relevel(value,"Strongly Agree",
+                           "Agree","No answer","Disagree",
+                           "Strongly disagree"))  %>% 
+  ggplot() + geom_bar(aes(x=value,fill=value)) +
+  facet_wrap(~name,ncol=4)+
+  labs(title="Investment-Proactiveness-Innovativeness measure",
+       x="",
+       fill="Level of agreement")+
+  theme(legend.position = "bottom",
+        axis.text.x = element_blank())
+```
+
+########
+
+## Numeric variables
+### Checking the distribution of some numeric variables
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+main <- mutate(main, enum_hhid_id = paste0(V1102Interviewer.s.Name,"/",V1108ID.of.Household..HHID.,"/",X_id))
+cols1 <- grep(pattern="V2217|V2223|V2224|V2227cal|V2247|V2248|V2250|V3101|V3401|V3402|V4011|V2220coco", names(main), value=TRUE)
+cols1 <- cols1[!grepl("check",cols1)]
+
+y <- cols1[1]
+cy <- cols1
+x <- "V3101What.was.your.household.total.income.last.year..2019.."
+for (y in c(cy)){
+  if (y == x) {
+    tmp.cmd1 <- paste0("q <- ggplot(main, aes(",y,"))+geom_density()+
+                       labs(title='",y,"')")
+    eval(parse(text=tmp.cmd1))
+    print(q)  
+  }
+  else {
+  tmp.cmd <- paste0("p <- ggplot(main, aes(x=",x,",
+  y=",y,"))+geom_point()+
+  labs(title='",y,"')")
+  eval(parse(text=tmp.cmd))
+  print(p)
+  }}
+#+ geom_text(aes(label=enum_hhid_id),vjust='inward',hjust='inward')
+```
+
+### Checking scatterplot Output vs Income / density vs output
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(purrr)
+library(ggrepel)
+
+main1 <- main %>% 
+  select(enum_hhid_id,
+         V2220coco_output_kg,V2220coco_output_nut,
+         coco_density=contains("approximate.planting.density.of.coconut"),
+         cacao_density=contains("approximate.planting.density.of.cacao"),
+         c("cacao_output_kg" = contains("total.cacao.output"),
+          "coconut_NetIncome" = contains("net.income.from.coconut"),
+          "cacao_NetIncome" = contains("net.income.from.cacao")))
+
+scatter_fun <- function(x, y) {
+  ggplot(main1, aes(x = .data[[x]], y = .data[[y]])) + 
+    #strings cannot be used directly in aes()
+    geom_point() #+
+    # geom_point(main1 %>% filter(.))
+    #geom_text_repel(aes(label = enum_hhid_id),size = 3)
+  } 
+
+scatter_fun("V2220coco_output_kg","coconut_NetIncome")
+scatter_fun("V2220coco_output_nut","coconut_NetIncome")
+scatter_fun("cacao_output_kg","cacao_NetIncome")
+scatter_fun("V2220coco_output_kg","coco_density")
+scatter_fun("V2220coco_output_nut","coco_density")
+scatter_fun("cacao_output_kg","cacao_density")
+#name_output <- main1 %>% select(V2220coco_output_kg,cacao_output_kg) %>% names()
+#name_income <- main1 %>% select(coconut_NetIncome,cacao_NetIncome) %>% names()
+#map_plot <- map(name_output,
+                # ~map(name_income,scatter_fun, y = .x))
+
+```
+
+### Checking boxplot of coconut and cacao output 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(main1, aes(x=V2220coco_output_kg)) + geom_boxplot() + labs(title="Coconut output in 2019 (kg)")
+ggplot(main1, aes(x=cacao_output_kg)) + geom_boxplot() + labs(title="Cacao output in 2019 (kg)")
+
+```
+
+
+### Checking the outlier of some numeric variables
+This table shows data outside 3 sd from the mean
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,results = "asis"}
+
+x <- cols[1]
+cx <- cols
+for (x in c(cx)){
+tmp.cmd <- paste0(x,"_outlier <- main %>% filter(",x," < (mean(",x,")-3*sd(",x,")) | ",x," > (mean(",x,")+3*sd(",x,"))) %>% 
+    select(",x,",X_id,enum_hhid,X_submission_time)")
+eval(parse(text=tmp.cmd))
+tmp.cmd2 <- paste0("if(nrow(",x,"_outlier)>0){
+              print(kable_styling(kable(",x,"_outlier,caption = '",x,"_outlier',
+              col.names=c('outlier value','id','enum_hhid','date'), escape=F)))
+              cat('\n')
+                   }")
+eval(parse(text=tmp.cmd2))
+}
+```
+### Checking big value of the household assets variables
+This table outline household assets variables > 5
+```{r echo=FALSE, message=FALSE, warning=FALSE,results = "asis"}
+cols2 <- grep(pattern="V3301|V3302|V3303|V3304|V3305|V3306|V3307|V3308|V3310|V3311|V3312|V3313|V3314", names(main), value=TRUE)
+cols2 <- cols2[!grepl("check",cols2)]
+x <- cols2[1]
+cx <- cols2
+for (x in c(cx)){
+  tmp.cmd <- paste0(x,"_bigvalue <- main %>% select(",x,",X_id,enum_hhid,X_submission_time) %>% filter(",x,">5)")
+  eval(parse(text=tmp.cmd))
+  tmp.cmd2 <- paste0("if(nrow(",x,"_bigvalue)>0){
+              print(kable_styling(kable(",x,"_bigvalue,caption = '",x,"_bigvalue',
+              col.names=c('big value','id','enum_hhid','date'), escape=F)))
+              cat('\n')
+                   }")
+  eval(parse(text=tmp.cmd2))
+}
+```
+                        
+### Checking big value of the distance in minutes variables
+This table outlines distance in minutes variables > 180 mins
+```{r echo=FALSE, message=FALSE, warning=FALSE,results = "asis"}
+a <- main %>% select(contains("How.many.minutes")) 
+
+x <- names(a)[1]
+cx <- names(a)
+for (x in c(cx)){
+  tmp.cmd <- paste0(x,"_bigvalue <- main %>% select(",x,",X_id,enum_hhid,X_submission_time) %>% filter(",x,">180)")
+  eval(parse(text=tmp.cmd))
+  tmp.cmd2 <- paste0("if(nrow(",x,"_bigvalue)>0){
+              print(kable_styling(kable(",x,"_bigvalue,caption = '",x,"_bigvalue',
+              col.names=c('big value','id','enum_hhid','date'), escape=F)))
+              cat('\n')
+                   }")
+  eval(parse(text=tmp.cmd2))
+}
+```
+
+### Other categorical variables
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+othercategorical <- 
+  mainrn %>% 
+  select_if(is.character) %>% names()
+othercategorical <- othercategorical[-c(1:17)]
+othercategorical <- othercategorical[!grepl(pattern="Safety\\.|Labor\\.|FinAccess\\.|Market\\.|Risk\\.|KTC\\.|Farmops\\.|cacao_Satisfy.Strg.NoCC|X_uuid|enum_hhid|Long_lat_hh_GPS|V1102Interviewer.Name|End.Survey|Invest.|Proact.|Innovative.|V4005shock.event.time.Month|V4002.|shock.event_class|Percep\\.|\\.other|specify_|Specify_|trust\\.|_selected|V3103|V3102|check_|Check_|_label|Other|V2209|V4009.cope.shock|\\.age|V2211other|V2210|\\.experience|\\.begin|\\.importance|\\.age|\\.variety|V2219|V2243|method\\.|V1108|V6006|reason.not.agree|V1104|V1105|V1106|Name.Zone.Purok",othercategorical)]
+
+#draw <- mainrn %>% select(all_of(othercategorical))
+
+for (y in c(othercategorical)) {
+eval(parse(text=paste0("q <- mainrn %>% select(",y,") %>% 
+replace_with_na_all(condition = ~.x == '')%>% na.omit() %>% 
+ggplot(aes(",y,",fill=",y,")) +
+    geom_bar() + theme(axis.text.x = element_blank())")))
+print(q)
+}
+
+data.frame(table(mainrn %>% select(contains("V2804reason")))) %>% kable()%>%
+  kable_styling()
+data.frame(table(mainrn %>% select(contains("V2805reason")))) %>% kable()%>%
+  kable_styling()
+```
+
+### ANNEX: INTERVIEW COMMENTS
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+a <- data.frame(table(mainrn$V6006notes.or.comments.from.interview.)) 
+a %>% arrange(desc(Freq)) %>% 
+kable() %>% 
+  kable_styling()
+```
