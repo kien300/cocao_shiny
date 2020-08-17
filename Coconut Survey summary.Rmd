@@ -18,7 +18,7 @@ pacman::p_load(readxl,stringr,naniar,
 
 ```{r include=FALSE}
 ###the short name version
-mainrn <- read.csv("surveydataclean.csv") 
+mainrn <- read.csv("surveydataclean.csv",encoding = "UTF-8") 
 mainrn$X_submission_time <-as.Date(mainrn$X_submission_time)
 
 #####mutation and adding variable-----
@@ -123,6 +123,11 @@ mainrn <- mainrn %>% left_join(cacaogroup)
 nb.cols <- 30
 mycolors <- colorRampPalette(brewer.pal(8, "Set2"))(nb.cols)
 
+n <- 60
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+pie(rep(1,n), col=sample(col_vector, n))
+
 ```
 
 ```{r include=FALSE}
@@ -167,7 +172,7 @@ cols <- cols[!grepl("check",cols)]
 
 ## Categorical variables
 ### Overview & Income source & intercrop system
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=17,fig.height=7}
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=4}
 full <- mainrn %>% ggplot() + geom_point(aes(x=V3101income.2019.,
                                y=V3316minutes.largest.coconut.plot,
                                        color=V2103ethnicity))+
@@ -177,24 +182,35 @@ zoom <- mainrn %>% ggplot() + geom_point(aes(x=V3101income.2019.,
                                      color=V2103ethnicity))+
   ylim(0,100)+xlim(0,600000) + labs(title="(Zoom)")
 ggpubr::ggarrange(full,zoom)
-```
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=5}
-mainrn %>% ggplot() + geom_boxplot(aes(x=V3117income.adequate.consumption,
+x1 <- mainrn %>% ggplot() + geom_bar(aes(x=V3117income.adequate.consumption,
+                                    fill=V3117income.adequate.consumption))+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  geom_text(stat="count",aes(x=V3117income.adequate.consumption,label=..count..),nudge_y=2)
+x2 <- mainrn %>% ggplot() + geom_boxplot(aes(x=V3117income.adequate.consumption,
                                        y=V3101income.2019.,
                                        fill=V3117income.adequate.consumption))+
-  theme(axis.text.x = element_blank())
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")
+ggpubr::ggarrange(x1,x2)
 #+ geom_text(stat="count",aes(x=V3117income.adequate.consumption,label=..count..))
+```
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=5}
+mainrn %>% ggplot(aes(V2209coco.cacao.crop.system,
+                      fill=V2209coco.cacao.crop.system)) +
+  geom_bar() + theme(axis.text.x = element_blank())+
+  geom_text(stat="count",aes(x=V2209coco.cacao.crop.system,label=..count..),nudge_y=2)
 
 mainrn %>% ggplot(aes(V3102largest.source.income.2019.,
                       fill=V3102largest.source.income.2019.)) +
-  geom_bar() + theme(axis.text.x = element_blank())
+  geom_bar() + theme(axis.text.x = element_blank())+
+  geom_text(stat="count",aes(x=V3102largest.source.income.2019.,label=..count..),nudge_y=2)
 
 mainrn %>% ggplot(aes(V3103income.fr.on.farm.or.off.farm,
                       fill=V3103income.fr.on.farm.or.off.farm)) +
-  geom_bar() + theme(axis.text.x = element_blank())
-mainrn %>% ggplot(aes(V2209coco.cacao.crop.system,
-                      fill=V2209coco.cacao.crop.system)) +
-  geom_bar() + theme(axis.text.x = element_blank())
+  geom_bar() + theme(axis.text.x = element_blank())+
+  geom_text(stat="count",aes(x=V3103income.fr.on.farm.or.off.farm,label=..count..),nudge_y=2)
+
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=7,fig.height=4}
@@ -202,12 +218,30 @@ characteristic <- mainrn %>% select(V2103ethnicity,
                                     V2104first.languange,
                                     V2105religion,V2106highest.education,
                                     V2107gender) %>% names()
-for (i in c(characteristic))  {
-eval(parse(text=paste0("p <- mainrn %>%ggplot() + geom_boxplot(aes(x=",i,",
+#for (i in c(characteristic))  {
+#eval(parse(text=paste0("p <- mainrn %>%ggplot() + geom_boxplot(aes(x=",i,",
+#                                       y=V3101income.2019.,
+#                                       fill=V2107gender))+ylim(0,500000)")))
+#print(p)
+#} 
+
+for (i in c(characteristic)){
+  print(i)
+  eval(parse(text=paste0("b <- mainrn %>% select(",i,",V3101income.2019.,V2107gender) %>% 
+                                       replace_with_na_all(condition = ~.x == '') %>% na.omit() %>% 
+                                       ggplot(aes(x=",i,",fill=V2107gender)) + geom_bar(position='dodge')+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = 'none')+geom_text(stat='count',aes(label=..count..),position = position_dodge(1),vjust = 0)")))
+  eval(parse(text=paste0("c <- mainrn %>% select(",i,",V3101income.2019.,V2107gender) %>% 
+                                       replace_with_na_all(condition = ~.x == '') %>% na.omit() %>% 
+                                       ggplot() + geom_boxplot(aes(x=",i,",
                                        y=V3101income.2019.,
-                                       fill=V2107gender))+ylim(0,500000)")))
-print(p)
-} 
+                                       fill=V2107gender))+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = 'none')+ylim(0,1000000)")))
+  d <- ggpubr::ggarrange(b,c)
+  print(d)
+}
 ```
 
 ### Cropping system overview
@@ -268,17 +302,30 @@ for (i in c(overview)){
                                        ggplot() + geom_bar(aes(x=",i,",
                                        fill=",i,"))+
   theme(axis.text.x = element_text(angle = 35,hjust=1),
-        legend.position = 'none')")))
+        legend.position = 'none')+geom_text(stat='count',aes(x=",i,",label=..count..),nudge_y=2)")))
   eval(parse(text=paste0("c <- mainrn %>% select(",i,",V3101income.2019.) %>% 
                                        replace_with_na_all(condition = ~.x == '') %>% na.omit() %>% 
                                        ggplot() + geom_boxplot(aes(x=",i,",
                                        y=V3101income.2019.,
                                        fill=",i,"))+
   theme(axis.text.x = element_text(angle = 35,hjust=1),
-        legend.position = 'none')")))
+        legend.position = 'none')+ylim(0,1000000)")))
   d <- ggpubr::ggarrange(b,c)
   print(d)
 }
+
+mainrn %>% select(V2211other.crop.most.contribute.income,
+                  V2253.V2211crop.importance.to.income,V3101income.2019.) %>% 
+  replace_with_na_all(condition = ~.x == '') %>% na.omit() %>% 
+  ggplot(aes(x=V2211other.crop.most.contribute.income,
+             fill=V2253.V2211crop.importance.to.income)) + 
+  geom_bar(position = "dodge")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position="right")+
+  labs(title="Other crop - importance to income",
+       fill="Importance")+
+  geom_text(stat="count",aes(label=..count..),position = position_dodge(1),vjust = 0)
+
 ```
 
 ### V2210other.crop.except.coco.cacao
@@ -296,7 +343,8 @@ test %>% replace_with_na_all(condition = ~.x == "") %>%
   geom_bar(aes(x=value,fill=value)) +
   theme(axis.text.x = element_text(angle = 35,hjust=1),
         legend.position = "none")+
-  labs(x="",title="V2210other.crop.except.coco.cacao")
+  labs(x="",title="V2210other.crop.except.coco.cacao")+
+  geom_text(stat="count",aes(x=value,label=..count..),nudge_y=2)
 ```
 
 ### Cacao planting
@@ -309,10 +357,11 @@ Below graph show
 print("This graph show the share of planting (struggling /satisfied) versus not planting")
 
 ggplot(mainrn) + geom_bar(aes(x=cacao_Satisfy.Strg.NoCC,fill=cacao_Satisfy.Strg.NoCC)) +
-  labs(title="The share of not planting / struggling /satisfied with cacao")
+  labs(title="The share of not planting / struggling /satisfied with cacao")+
+  geom_text(stat="count",aes(x=cacao_Satisfy.Strg.NoCC,label=..count..),nudge_y=2)
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=12,fig.height=10}
+```{r fig.height=10, fig.width=12, message=FALSE, warning=FALSE, include=FALSE}
 print("This graph shows level of agreement for the reason for not planting or struggling with cacao")
 mainrn %>% 
   filter(cacao_Satisfy.Strg.NoCC %in% c("No Cacao","Struggling")) %>% 
@@ -330,22 +379,57 @@ mainrn %>%
   theme(legend.position = "bottom",
         axis.text.x = element_blank())
 ```
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=6}
-print("This graph shows reason for not planting or struggling with cacao")
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=5}
+print("This graph shows reason for not planting cacao across 3 groups of farmers")
 mainrn %>% 
-  filter(cacao_Satisfy.Strg.NoCC %in% c("No Cacao","Struggling")) %>% 
+  pivot_longer(Farmops.not.enough.land.intercr:Safety.this.area.unsafe.transit.aggression.assault) %>% 
+  filter(value=="Strongly agree" | value=="Agree") %>% 
+  ggplot() +
+  geom_bar(aes(fill=name,x=cacao_Satisfy.Strg.NoCC),position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title="Drawbacks of planting cacao across 3 groups",
+       subtitle="No of agree + strongly agree",
+       x="",y = "Percentage",
+       fill="Reason")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "right")+
+  scale_fill_manual(values = col_vector)
+
+
+print("This graph shows reason for not planting cacao")
+mainrn %>% 
+  filter(cacao_Satisfy.Strg.NoCC =="No Cacao") %>% 
   select(Farmops.not.enough.land.intercr:Safety.this.area.unsafe.transit.aggression.assault) %>% 
   pivot_longer(everything()) %>% 
   filter(value=="Strongly agree" | value=="Agree") %>% 
   ggplot() +
   geom_bar(aes(x=name,fill=name)) +
-  labs(title="Reason for not planting / struggling with cacao",
+  labs(title="Reason for not planting with cacao",
        subtitle="No of agree + strongly agree",
        x="",
        fill="Reason")+
   theme(axis.text.x = element_text(angle = 35,hjust=1),
         legend.position = "none")+
-  scale_fill_manual(values = mycolors)
+  scale_fill_manual(values = mycolors)+
+  geom_text(stat="count",aes(x=name,label=..count..),nudge_y=2)
+
+print("This graph shows reason for struggling with cacao")
+mainrn %>% 
+  filter(cacao_Satisfy.Strg.NoCC =="Struggling") %>% 
+  select(Farmops.not.enough.land.intercr:Safety.this.area.unsafe.transit.aggression.assault) %>% 
+  pivot_longer(everything()) %>% 
+  filter(value=="Strongly agree" | value=="Agree") %>% 
+  ggplot() +
+  geom_bar(aes(x=name,fill=name)) +
+  labs(title="Reason for struggling with cacao",
+       subtitle="No of agree + strongly agree",
+       x="",
+       fill="Reason")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "none")+
+  scale_fill_manual(values = mycolors)+
+  geom_text(stat="count",aes(x=name,label=..count..),nudge_y=2)
+
 print("This graph shows reason for satisfied with cacao")
 mainrn %>% 
   filter(cacao_Satisfy.Strg.NoCC %in% c("Satisfied")) %>% 
@@ -360,7 +444,8 @@ mainrn %>%
        fill="Reason")+
   theme(axis.text.x = element_text(angle = 35,hjust=1),
         legend.position = "none")+
-  scale_fill_manual(values = mycolors)
+  scale_fill_manual(values = mycolors)+
+  geom_text(stat="count",aes(x=name,label=..count..),nudge_y=2)
 
 
 
@@ -377,7 +462,8 @@ mainrn %>%
        fill="Reason")+
   theme(axis.text.x = element_text(angle = 35,hjust=1),
         legend.position = "none")+
-  scale_fill_manual(values = mycolors)
+  scale_fill_manual(values = mycolors)+
+  geom_text(stat="count",aes(x=name,label=..count..),nudge_y=2)
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -395,13 +481,32 @@ satify %>% filter(V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.wit
        fill="Reason")+
   theme(axis.text.x = element_text(angle = 35,hjust=1),
         legend.position = "none")+
-  scale_fill_manual(values = mycolors)
+  scale_fill_manual(values = mycolors)+
+  geom_text(stat="count",aes(x=name,label=..count..),nudge_y=2)
 
 ```
 
 ### Trust in service provider
 
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=8}
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=7}
+
+provider <- mainrn %>%
+  select(V3502provider.information.respond.climate.risks:V3524provider.cacao.seedlings.) %>% 
+  select(-contains("trust."),-contains("specify_")) %>% names()
+providerpl <- mainrn %>% select(all_of(provider)) %>% 
+  pivot_longer(everything()) 
+
+providerpl <- providerpl %>% replace_with_na_all(condition = ~.x == "") 
+providerpl %>% na.omit() %>% 
+  ggplot() + geom_bar(aes(x=name,fill=value)) +
+  #facet_wrap(~name,ncol=3)+
+  labs(title="Provider of infomation/service",
+       x="",
+       fill="Organization")+
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 35,hjust=1))
+
+
 trust <- mainrn %>% select(contains("trust.")) %>% names()
 trustpl <- mainrn %>% select(all_of(trust)) %>% 
   pivot_longer(everything()) 
@@ -410,32 +515,33 @@ trustpl$value <- gsub(" / | /|/ ","/",trustpl$value)
 trustpl$value <-toupper(trustpl$value)
 trustpl <- trustpl %>% replace_with_na_all(condition = ~.x == "") 
 trustpl %>% na.omit() %>% 
-  ggplot() + geom_bar(aes(x=value,fill=value)) +
-  facet_wrap(~name,ncol=3)+
-  labs(title="Perception of cacao/coco",
+  ggplot() + geom_bar(aes(x=name,fill=value)) +
+  #facet_wrap(~name,ncol=3)+
+  labs(title="Trust in provider of information/service",
+       y="No. HH know the service",
        x="",
        fill="Level of trust")+
   theme(legend.position = "bottom",
-        axis.text.x = element_blank())
+        axis.text.x = element_text(angle = 35,hjust=1))
 
 ```
 
 ### Perception of cacao/coco
 
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=8}
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=7}
 percep <- mainrn %>% select(contains("Percep.")) %>% names()
 mainrn %>% select(all_of(percep)) %>% 
   pivot_longer(everything()) %>%
   mutate(value=fct_relevel(value,"Strongly Agree",
                            "Agree","No answer","Disagree",
                            "Strongly Disagree"))  %>% 
-  ggplot() + geom_bar(aes(x=value,fill=value)) +
+  ggplot() + geom_bar(aes(x=name,fill=value)) +
   facet_wrap(~name,ncol=2)+
   labs(title="Perception of cacao/coco",
        x="",
        fill="Level of agreement")+
   theme(legend.position = "bottom",
-        axis.text.x = element_blank())
+        axis.text.x = element_text(angle = 35,hjust=1))
 
 ```
 
@@ -458,17 +564,17 @@ a %>%
   labs(x="",title="(Zoom)")
 ```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=10}
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=7}
 transportmethod <- mainrn %>% select(contains("method.")) %>% names()
 mainrn %>% select(all_of(transportmethod)) %>% 
   pivot_longer(everything()) %>% 
-  ggplot() + geom_bar(aes(x=value,fill=value)) +
+  ggplot() + geom_bar(aes(x=name,fill=value)) +
   facet_wrap(~name,ncol=3)+
   labs(title="Transportation method to workplace/market/input/etc",
        x="",
        fill="Method")+
   theme(legend.position = "bottom",
-        axis.text.x = element_blank())
+        axis.text.x = element_text(angle = 35,hjust=1))
 ```
 
 ### Cope with shock
@@ -486,7 +592,8 @@ test %>% replace_with_na_all(condition = ~.x == "") %>%
   geom_bar(aes(x=value,fill=value)) +
   theme(axis.text.x = element_text(angle = 35,hjust=1),
         legend.position = "none")+
-  labs(x="",title="How to cope with shock")
+  labs(x="",title="How to cope with shock")+
+  geom_text(stat="count",aes(x=value,label=..count..),nudge_y=2)
 ```
 
 ### V3309.Outer.Walls.Construct.Materials
@@ -504,7 +611,8 @@ test %>% replace_with_na_all(condition = ~.x == "") %>%
   geom_bar(aes(x=value,fill=value)) +
   theme(axis.text.x = element_text(angle = 35,hjust=1),
         legend.position = "none")+
-  labs(x="",title="V3309.Outer.Walls.Construct.Materials")
+  labs(x="",title="V3309.Outer.Walls.Construct.Materials")+
+  geom_text(stat="count",aes(x=value,label=..count..),nudge_y=2)
 ```
 
 
@@ -518,13 +626,29 @@ mainrn %>% select(all_of(IPI)) %>%
   mutate(value=fct_relevel(value,"Strongly Agree",
                            "Agree","No answer","Disagree",
                            "Strongly disagree"))  %>% 
-  ggplot() + geom_bar(aes(x=value,fill=value)) +
+  ggplot() + geom_bar(aes(x=name,fill=value)) +
   facet_wrap(~name,ncol=4)+
   labs(title="Investment-Proactiveness-Innovativeness measure",
        x="",
        fill="Level of agreement")+
   theme(legend.position = "bottom",
-        axis.text.x = element_blank())
+        axis.text.x = element_text(angle = 35,hjust=1))
+
+
+mainrn %>% select(cacao_Satisfy.Strg.NoCC,all_of(IPI)) %>% 
+  pivot_longer(-cacao_Satisfy.Strg.NoCC) %>%  replace_with_na_all(condition = ~.x == "")%>%
+  na.omit() %>% 
+  filter(value=="Strongly agree" | value=="Agree") %>% 
+  ggplot() +
+  geom_bar(aes(fill=name,x=cacao_Satisfy.Strg.NoCC),position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title="Investment-Proactiveness-Innovativeness across 3 groups",
+       subtitle="No of agree + strongly agree",
+       x="",y = "Percentage",
+       fill="Reason")+
+  theme(axis.text.x = element_text(angle = 35,hjust=1),
+        legend.position = "right")+
+  scale_fill_manual(values = col_vector)
 ```
 
 ########
@@ -665,15 +789,17 @@ othercategorical <-
   mainrn %>% 
   select_if(is.character) %>% names()
 othercategorical <- othercategorical[-c(1:17)]
-othercategorical <- othercategorical[!grepl(pattern="Safety\\.|Labor\\.|FinAccess\\.|Market\\.|Risk\\.|KTC\\.|Farmops\\.|cacao_Satisfy.Strg.NoCC|X_uuid|enum_hhid|Long_lat_hh_GPS|V1102Interviewer.Name|End.Survey|Invest.|Proact.|Innovative.|V4005shock.event.time.Month|V4002.|shock.event_class|Percep\\.|\\.other|specify_|Specify_|trust\\.|_selected|V3103|V3102|check_|Check_|_label|Other|V2209|V4009.cope.shock|\\.age|V2211other|V2210|\\.experience|\\.begin|\\.importance|\\.age|\\.variety|V2219|V2243|method\\.|V1108|V6006|reason.not.agree|V1104|V1105|V1106|Name.Zone.Purok",othercategorical)]
+othercategorical <- othercategorical[!grepl(pattern="Safety\\.|Labor\\.|FinAccess\\.|Market\\.|Risk\\.|KTC\\.|Farmops\\.|cacao_Satisfy.Strg.NoCC|X_uuid|enum_hhid|Long_lat_hh_GPS|V1102Interviewer.Name|End.Survey|Invest.|Proact.|Innovative.|V4005shock.event.time.Month|V4002.|shock.event_class|Percep\\.|\\.other|specify_|Specify_|trust\\.|_selected|V3103|V3102|check_|Check_|_label|Other|V2209|V4009.cope.shock|\\.age|V2211other|V2210|\\.experience|\\.begin|\\.importance|\\.age|\\.variety|V2219|V2243|method\\.|V1108|V6006|reason.not.agree|V1104|V1105|V1106|Name.Zone.Purok|V3117income.adequate.consumption",othercategorical)]
+
+other2 <- setdiff(othercategorical,provider)
 
 #draw <- mainrn %>% select(all_of(othercategorical))
 
-for (y in c(othercategorical)) {
+for (y in c(other2)) {
 eval(parse(text=paste0("q <- mainrn %>% select(",y,") %>% 
 replace_with_na_all(condition = ~.x == '')%>% na.omit() %>% 
 ggplot(aes(",y,",fill=",y,")) +
-    geom_bar() + theme(axis.text.x = element_blank())")))
+    geom_bar() + theme(axis.text.x = element_blank())+geom_text(stat='count',aes(x=",y,",label=..count..),nudge_y=2)")))
 print(q)
 }
 
