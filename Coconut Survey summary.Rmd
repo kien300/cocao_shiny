@@ -172,7 +172,7 @@ cols <- cols[!grepl("check",cols)]
 
 ## Categorical variables
 ### Overview & Income source & intercrop system
-```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=8,fig.height=4}
+```{r echo=FALSE, message=FALSE, warning=FALSE,fig.width=10,fig.height=4}
 full <- mainrn %>% ggplot() + geom_point(aes(x=V3101income.2019.,
                                y=V3316minutes.largest.coconut.plot,
                                        color=V2103ethnicity))+
@@ -504,7 +504,8 @@ providerpl %>% na.omit() %>%
        x="",
        fill="Organization")+
   theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 35,hjust=1))
+        axis.text.x = element_text(angle = 35,hjust=1))+
+  scale_fill_manual(values = col_vector)
 
 
 trust <- mainrn %>% select(contains("trust.")) %>% names()
@@ -536,12 +537,13 @@ mainrn %>% select(all_of(percep)) %>%
                            "Agree","No answer","Disagree",
                            "Strongly Disagree"))  %>% 
   ggplot() + geom_bar(aes(x=name,fill=value)) +
-  facet_wrap(~name,ncol=2)+
+  #facet_wrap(~name,ncol=2)+
   labs(title="Perception of cacao/coco",
        x="",
        fill="Level of agreement")+
   theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 35,hjust=1))
+        axis.text.x = element_text(angle = 35,hjust=1))+
+  scale_fill_manual(values = col_vector)
 
 ```
 
