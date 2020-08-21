@@ -406,7 +406,7 @@ colname <- read.csv("name2.csv")
 col <- colname$concart_name
 colnames(main) <- col
 
-satify <- main %>% select(195:228,V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.with.your.cacao.production.)
+satify <- main %>% select(I.have.sufficient.land.for.intercropping.coconut.with.cacao:It.is.safe.to.transit.in.the.area.without.fear.of.suffering.an.aggression.or.assault,V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.with.your.cacao.production.)
 satify <- satify[!grepl("1$",names(satify))]
 satify %>% filter(V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.with.your.cacao.production.=="Satisfied") %>% 
   select(-V2404Do.you.feel.like.you.are.struggling.with.or.satisfied.with.your.cacao.production.) %>% 
@@ -726,7 +726,7 @@ mainrn %>% filter(!is.na(V2804reasonNotRentToNeighbor)&V2804reasonNotRentToNeigh
 Rent to trader
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-data.frame(table(mainrn %>% select(contains("V2805reason")))) %>% kable()%>%
+data.frame(table(mainrn %>% select(V2805reasonNotRentToTrader))) %>% kable()%>%
   kable_styling()
 ```
 ########

@@ -145,26 +145,37 @@ sum(is.na(mainrn$V2804reason.not.agree.neighbor.rent.land))
 mainrn <- mainrn %>% 
   mutate(V2804reasonNotRentToNeighbor=
            ifelse(is.na(V2804reason.not.agree.neighbor.rent.land)|V2804reason.not.agree.neighbor.rent.land=="",NA,
-           ifelse(grepl("nt enough|n't enough|not enough|little|small|low|yield more than",V2804reason.not.agree.neighbor.rent.land)&
-                  grepl("amount|20,000|20000|offer",V2804reason.not.agree.neighbor.rent.land),"20000peso is not enough",
-                  ifelse(grepl("land|soil",V2804reason.not.agree.neighbor.rent.land)&grepl("not suitable|nt suitable|n't suitable",V2804reason.not.agree.neighbor.rent.land),"Soil not suitable",
-                  ifelse(grepl("plant.*self|himself|themselves|herself|own use|own cacao|own plant|own crop|needs capital to finance cacao production|i will be the one to|cultivate the land himself, and for him, it is better to have a share of income from cacao|depends on the agreement|am the one to|plant.*on my own",
+           ifelse(grepl("nt enough|n't enough|not enough|little|small|low|yield more than|agree at|farmer can yield more than|not satisfied",V2804reason.not.agree.neighbor.rent.land)&
+                  grepl("amount|20,000|20000|offer|at 50,000 pesos|from its crops if payment is per year",V2804reason.not.agree.neighbor.rent.land),"20000peso is not enough",
+                  ifelse(grepl("land|soil|area.*rockie",V2804reason.not.agree.neighbor.rent.land)&grepl("not suitable|nt suitable|n't suitable",V2804reason.not.agree.neighbor.rent.land),"Soil not suitable",
+                  ifelse(grepl("plant.*self|himself|themselves|herself|own use|own cacao|own plant|own crop|needs capital to finance cacao production|i will be the one to|cultivate the land himself, and for him, it is better to have a share of income from cacao|depends on the agreement|i will be the one|am the one to|plant.*on my own|intercrop.*n my own|want.*land.*for his own",
                                V2804reason.not.agree.neighbor.rent.land),"Rather plant/use land themselves",
                   ifelse(grepl("already.*cacao",V2804reason.not.agree.neighbor.rent.land),"Already has cacao",
                          ifelse(grepl("banana",V2804reason.not.agree.neighbor.rent.land),"Already has banana/ Prefer banana",
-                                ifelse(grepl("area.*small|land.*small|no.*space|land.*given by|sell.*land",V2804reason.not.agree.neighbor.rent.land),"No space/ small land/ Not their land",
+                                ifelse(grepl("area.*small|land.*small|no.*space|land.*given by|sell.*land|land.*not.*to their name",V2804reason.not.agree.neighbor.rent.land),"No space/ small land/ Not their land",
                                        ifelse(grepl(".*ifficult|.*omplicat|.*igh.* maintenance|chemicals",V2804reason.not.agree.neighbor.rent.land),
                                        "Afraid of dificulty for coconut, maintenance, chemicals",
                                        ifelse(grepl("son|children|relative",V2804reason.not.agree.neighbor.rent.land),"Rather leave to children/ relatives",
-                                              ifelse(grepl("not allow|ont allow|oesn.*like|don.*like|on't want|ont want|as of this time no|not for rent|don’t want anybody to manage her area|find.*joy in.* farm|doesn't want others to plant|contented|no need|insignificant compared.*income",V2804reason.not.agree.neighbor.rent.land),
-                                                     "Just don't want to rent/ already contented","Others")))))))))))
+                                              ifelse(grepl("not allow|ont allow|oesn.*like|don.*like|on't want|ont want|as of this time no|not for rent|don’t want anybody to manage her area|find.*joy in.* farm|doesn't want others to plant|contented|no need|insignificant compared.*income|rather stay as it is",V2804reason.not.agree.neighbor.rent.land),
+                                                     "Just don't want to rent/ already contented","Other")))))))))))
 
 test <- select(mainrn, X_id, contains("V2804"))
 table(test$V2804reasonNotRentToNeighbor)
 
 #mainrn$cacao_Satisfy.Strg.NoCC[which(mainrn$V2804reason.not.agree.neighbor.rent.land=="Its insignificant compared to my income")]
-test <- select(mainrn, X_id, contains("V2805")) ##V2805 too few categories
+##V2805 too few categories
 
+mainrn$V2805reason.not.agree.trader.rent.land <- tolower(mainrn$V2805reason.not.agree.trader.rent.land)
+mainrn <- mainrn %>% 
+  mutate(V2805reasonNotRentToTrader=
+           ifelse(is.na(V2805reason.not.agree.trader.rent.land)|V2805reason.not.agree.trader.rent.land=="",NA,
+                  ifelse(grepl("neighbor than.*cacao trader",V2805reason.not.agree.trader.rent.land),"Prefer/trust neighbor more than trader",
+                         ifelse(grepl("chemicals|deteriorate|destroy",V2805reason.not.agree.trader.rent.land),"Afraid of chemicals used on land",
+                                ifelse(grepl("want.*a higher offer|should offer more than 20,000",V2805reason.not.agree.trader.rent.land),"20000peso is not enough",
+                                       "Other")))))
+                  
+test <- select(mainrn, X_id, contains("V2805")) 
+table(test$V2805reasonNotRentToTrader)                  
 #### Recode comments at the end of file
 sum(is.na(mainrn$V6006notes.or.comments.from.interview.))
 mainrn$V6006notes.or.comments.from.interview. <- tolower(mainrn$V6006notes.or.comments.from.interview.)
@@ -173,26 +184,26 @@ mainrn <- mainrn %>%
   mutate(V6006FinalComment=
            ifelse(is.na(V6006notes.or.comments.from.interview.)|V6006notes.or.comments.from.interview.=="",NA,
                   ifelse(grepl("none|no comment",V6006notes.or.comments.from.interview.),"No comment",
-                         ifelse(grepl("drought|typhoon|drouhgt|extreme event|flood",V6006notes.or.comments.from.interview.),
+                         ifelse(grepl("drought|typhoon|drouhgt|extreme event|flood|calamity|loss of asset due to shock",V6006notes.or.comments.from.interview.),
                                 "Drought/typhoon/flood affect/ destroy crop",
                                 ifelse(grepl("not willing to intercrop cacao|hesitant to intercrop cacao",V6006notes.or.comments.from.interview.),
                                       "Unwilling to intercrop cacao",
                                       ifelse(grepl("remittance|senior citizen",V6006notes.or.comments.from.interview.),"Has remittance/ senior citizen benefit",
-                                             ifelse(grepl("own.*business|has.*business|own.*store|ha.*sari-sari|business is trucking services",V6006notes.or.comments.from.interview.),"Own business",
+                                             ifelse(grepl("own.*business|has.*business|own.*store|ha.*sari-sari|business is trucking services|respondent has gasoline station|hus store",V6006notes.or.comments.from.interview.),"Own business",
                                                     ifelse(grepl("retire|they are old|oldies|old and weak",V6006notes.or.comments.from.interview.),"They are old/ retired people",
-                                                           ifelse(grepl("labor work|employee|work.*as|teacher|work.*government|works in a construction site|fisherman",V6006notes.or.comments.from.interview.),"Work other jobs",
+                                                           ifelse(grepl("labor work|employee|work.*as|teacher|work.*government|works in a construction site|fisherman|farmer got a.*job.*left the farm|sell of copra, charcoal and dehusk|sell coconut wine",V6006notes.or.comments.from.interview.),"Work other jobs",
                                                                   ifelse(grepl("disease",V6006notes.or.comments.from.interview.),"Diseases in the crops",
                                                                          ifelse(grepl("banana|mango",V6006notes.or.comments.from.interview.),"Plant banana/ mango",
-                                                                                ifelse(grepl("cacao.*not.*productive|few of the farmer's cacao trees are productive|few of the farmer's cacao trees are bearing pods",V6006notes.or.comments.from.interview.),"Cacao not/low productive",
+                                                                                ifelse(grepl("cacao.*not.*productive|few of the farmer's cacao trees are productive|few of the farmer's cacao trees are bearing pods|cacao.*no output",V6006notes.or.comments.from.interview.),"Cacao not/low productive",
                                                                                        ifelse(grepl("coconut.*not.*productive|only.*of.*coconut.*productive|50% of coconut trees are productive|low production of coconut",V6006notes.or.comments.from.interview.),"Coconut not/low productive",
                                                                                               ifelse(grepl("land|soil",V6006notes.or.comments.from.interview.)&grepl("not suitable|nt suitable|n't suitable",V6006notes.or.comments.from.interview.),"Soil not suitable",
-                                                                                                     ifelse(grepl("is a tenant.*coconut|as tenant of coconut farm|coconut.*as tenant|only 50% of coconut income was  accrued by the respondent",V6006notes.or.comments.from.interview.),"Are tenants and receive only part of coconut income",
+                                                                                                     ifelse(grepl("is a tenant.*coconut|as tenant of coconut farm|coconut.*as tenant|only 50% of coconut income was  accrued by the respondent|she has 30% share|as tenant.*only receive",V6006notes.or.comments.from.interview.),"Are tenants and receive only <1/2 coconut income",
                                                                                                             ifelse(grepl("other crops.*consumption only|other crops.*no income|other crops.*n't.*income|durian fruits are for consumption only",V6006notes.or.comments.from.interview.),"Other crop not a source of income",
                                                                                                                    ifelse(grepl("former prov pca director|municipal councilor",V6006notes.or.comments.from.interview.),"Local gov officer",
-                                                                                                                          ifelse(grepl("33.*laborer|50% share of the tenant/laborer|high expenses because he has a regular labor",V6006notes.or.comments.from.interview.),"High share 1/2-1/3 coconut income to laborer/tenants",
-                                                                                                                                 ifelse(grepl("willing.*cacao|willing.*rent|will actually plant cacao|plant a cacao.*if",V6006notes.or.comments.from.interview.),"Willing plant cacao/rent out land under certain condition",
+                                                                                                                          ifelse(grepl("33.*laborer|50% share of the tenant/laborer|high expenses because he has a regular labor|received only 60% of gross income of coconut|only get 60% from gross sales",V6006notes.or.comments.from.interview.),"High share 1/2-1/3 coconut income to laborer/tenants",
+                                                                                                                                 ifelse(grepl("willing.*cacao|willing.*rent|will actually plant cacao|plant a cacao.*if|will to rent out|will continue intercropping cacao",V6006notes.or.comments.from.interview.),"Willing plant cacao/rent out land under certain condition",
                                                                                                                                         ifelse(grepl("credit",V6006notes.or.comments.from.interview.),"Credit problem/ worry about credit",
-                                                                                                                                 "Other"))))))))))))))))))))
+                                                                                                                                               "Other"))))))))))))))))))))
 table(mainrn %>% filter(V6006FinalComment=="Other") %>% .$V6006notes.or.comments.from.interview.)
 table(mainrn$V6006FinalComment)
 
@@ -200,7 +211,6 @@ table(mainrn$V6006FinalComment)
 
 ### Write cleaned file-----
 readr::write_excel_csv(mainrn,"surveydataclean.csv",na="")
-
 
 
 
